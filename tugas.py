@@ -382,3 +382,80 @@ class ImageProcessorApp:
         except Exception as e:
             messagebox.showerror("Error", f"Error processing image: {str(e)}")
             self.status_var.set("Processing error")
+
+            def show_histogram(self, cv_img):
+        """Show image histogram in a modern dialog"""
+        try:
+            # Validate image dimensions
+            if cv_img is None or len(cv_img.shape) < 2:
+                messagebox.showerror("Error", "Invalid image for histogram.")
+                return
+
+            # Use a valid matplotlib style
+            plt.style.use('ggplot')  # Ganti 'seaborn' dengan 'ggplot' atau style lain yang tersedia
+            fig = plt.figure(figsize=(10, 6), facecolor='#f5f5f5')
+            
+            # Color histogram (RGB)
+            ax1 = fig.add_subplot(211)
+            color = ('b', 'g', 'r')
+            for i, col in enumerate(color):
+                hist = cv2.calcHist([cv_img], [i], None, [256], [0, 256])
+                ax1.plot(hist, color=col, label=col.upper())
+            ax1.set_title("Color Histogram (RGB)", fontsize=12)
+            ax1.set_xlabel("Intensity Value", fontsize=10)
+            ax1.set_ylabel("Pixel Count", fontsize=10)
+            ax1.legend()
+            ax1.grid(True, linestyle='--', alpha=0.5)
+            
+            # Grayscale histogram
+            ax2 = fig.add_subplot(212)
+            gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+            hist_gray = cv2.calcHist([gray], [0], None, [256], [0, 256])
+            ax2.plot(hist_gray, color='black', label='Grayscale')
+            ax2.set_title("Grayscale Histogram", fontsize=12)
+            ax2.set_xlabel("Intensity Value", fontsize=10)
+            ax2.set_ylabel("Pixel Count", fontsize=10)
+            ax2.legend()
+            ax2.grid(True, linestyle='--', alpha=0.5)
+            
+            plt.tight_layout()
+            
+            # Create modern histogram window
+            hist_win = tk.Toplevel(self.root)
+            hist_win.title("Image Histogram")
+            hist_win.geometry("800x600")
+            hist_win.configure(bg=self.bg_color)
+            
+            # Add canvas for figure
+            canvas = FigureCanvasTkAgg(fig, master=hist_win)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+            
+            # Add close button
+            close_btn = tk.Button(hist_win, text="Close", command=hist_win.destroy,
+                                bg=self.button_color, fg="white", relief=tk.FLAT,
+                                font=("Segoe UI", 10))
+            close_btn.pack(pady=(0, 15))
+            close_btn.bind("<Enter>", lambda e: close_btn.config(bg=self.button_hover))
+            close_btn.bind("<Leave>", lambda e: close_btn.config(bg=self.button_color))
+            
+            self.histogram_figures.append(fig)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to create histogram: {str(e)}")
+
+if _name_ == "_main_":
+    root = tk.Tk()
+    
+    # Set window icon (optional)
+    try:
+        root.iconbitmap("icon.ico")
+    except:
+        pass
+    
+    # Set theme
+    style = ttk.Style()
+    style.theme_use('clam')
+    
+    app = ImageProcessorApp(root)
+    root.mainloop()
