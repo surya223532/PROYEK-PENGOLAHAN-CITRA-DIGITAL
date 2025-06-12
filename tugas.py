@@ -269,3 +269,116 @@ class ImageProcessorApp:
         # Get canvas dimensions
         canvas_width = canvas.winfo_width() - 4
         canvas_height = canvas.winfo_height() - 4
+        
+        if canvas_width <= 1 or canvas_height <= 1:
+            canvas_width = 500
+            canvas_height = 400
+        
+        # Calculate aspect ratio preserving dimensions
+        img_ratio = img.width / img.height
+        canvas_ratio = canvas_width / canvas_height
+        
+        if img_ratio > canvas_ratio:
+            new_width = canvas_width
+            new_height = int(canvas_width / img_ratio)
+        else:
+            new_height = canvas_height
+            new_width = int(canvas_height * img_ratio)
+        
+        # Resize and display image
+        display_img = img.resize((new_width, new_height), Image.LANCZOS)
+        photo = ImageTk.PhotoImage(display_img)
+        
+        if canvas == self.original_canvas:
+            self.original_photo = photo
+        else:
+            self.processed_photo = photo
+        
+        canvas.create_image(canvas_width//2, canvas_height//2, anchor=tk.CENTER, image=photo)
+        canvas.config(scrollregion=canvas.bbox(tk.ALL))
+        canvas.image = photo
+
+    def process_image(self):
+        """Process image based on user selection"""
+        if self.original_img is None:
+            messagebox.showerror("Error", "Please upload an image first!")
+            return
+
+        try:
+            cv_img = cv2.cvtColor(np.array(self.original_img), cv2.COLOR_RGB2BGR)
+            choice = self.option_var.get()
+            processed = None
+
+            if choice == "Grayscale":
+                gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+                processed = gray
+
+            elif choice == "Biner (Threshold)":
+                gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+                threshold = getattr(self, "threshold_var").get()
+                _, binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
+                processed = binary
+
+            elif choice == "Brightness/Contrast":
+                brightness = getattr(self, "brightness_var").get()
+                contrast = getattr(self, "contrast_var").get()
+                processed = cv2.convertScaleAbs(cv_img, alpha=contrast, beta=brightness)
+
+            elif choice == "Operasi Logika":
+                gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+                operation = getattr(self, "logic_op_var").get()
+                
+                mask = np.zeros_like(gray)
+                cv2.circle(mask, (gray.shape[1]//2, gray.shape[0]//2), 
+                          min(gray.shape)//3, 255, -1)
+                
+                if operation == "AND":
+                    processed = cv2.bitwise_and(gray, mask)
+                elif operation == "OR":
+                    processed = cv2.bitwise_or(gray, mask)
+                elif operation == "XOR":
+                    processed = cv2.bitwise_xor(gray, mask)
+                elif operation == "NOT":
+                    processed = cv2.bitwise_not(gray)
+
+            elif choice == "Histogram":
+                self.show_histogram(cv_img)
+                return
+
+            elif choice == "Dilasi":
+                kernel_size = getattr(self, "morph_kernel_var").get()
+                iterations = getattr(self, "morph_iter_var").get()
+                
+                gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+                kernel = np.ones((kernel_size, kernel_size), np.uint8)
+                processed = cv2.dilate(gray, kernel, iterations=iterations)
+
+            elif choice == "Edge Detection":
+                method = getattr(self, "edge_method_var").get()
+                gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+                
+                if method == "Canny":
+                    threshold1 = getattr(self, "canny_thresh1_var").get()
+                    threshold2 = getattr(self, "canny_thresh2_var").get()
+                    processed = cv2.Canny(gray, threshold1, threshold2)
+                elif method == "Sobel":
+                    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+                    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+                    processed = cv2.magnitude(sobelx, sobely)
+                    processed = np.uint8(processed)
+
+            # Convert result to displayable format
+            if processed is not None:
+                if len(processed.shape) == 2:
+                    img_to_show = Image.fromarray(processed)
+                else:
+                    img_rgb = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
+                    img_to_show = Image.fromarray(img_rgb)
+                
+                self.processed_img = img_to_show
+                self.display_image(img_to_show, self.processed_canvas)
+                self.status_var.set(f"Processed: {choice}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Error processing image: {str(e)}")
+            self.status_var.set("Processing error")
