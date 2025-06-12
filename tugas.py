@@ -101,6 +101,16 @@ class ImageProcessorApp:
         self.process_btn.bind("<Enter>", lambda e: self.process_btn.config(bg="#2ecc71"))
         self.process_btn.bind("<Leave>", lambda e: self.process_btn.config(bg="#27ae60"))
 
+        # Save button with modern style
+        self.save_btn = tk.Button(self.sidebar, text="Save Processed Image", 
+                                bg="#e67e22", fg="white",
+                                font=("Segoe UI", 12), 
+                                relief=tk.FLAT, activebackground="#d35400",
+                                command=self.save_image)
+        self.save_btn.pack(fill=tk.X, pady=5)
+        self.save_btn.bind("<Enter>", lambda e: self.save_btn.config(bg="#d35400"))
+        self.save_btn.bind("<Leave>", lambda e: self.save_btn.config(bg="#e67e22"))
+
         # Status bar
         self.status_var = tk.StringVar(value="Ready")
         self.status_bar = tk.Label(self.sidebar, textvariable=self.status_var, 
@@ -112,7 +122,7 @@ class ImageProcessorApp:
         self.main_frame = tk.Frame(root, bg=self.bg_color, padx=20, pady=20)
         self.main_frame.grid(row=0, column=1, sticky="nsew")
 
-      # Image display title
+        # Image display title
         title_frame = tk.Frame(self.main_frame, bg=self.bg_color)
         title_frame.pack(fill=tk.X, pady=(0, 15))
 
@@ -162,7 +172,7 @@ class ImageProcessorApp:
 
     def style_buttons(self):
         """Apply modern styling to all buttons"""
-        buttons = [self.upload_btn, self.process_btn]
+        buttons = [self.upload_btn, self.process_btn, self.save_btn]
         
         for btn in buttons:
             btn.config(borderwidth=0, relief=tk.FLAT, 
@@ -248,7 +258,7 @@ class ImageProcessorApp:
     def upload_image(self):
         """Upload image from file system"""
         file_path = filedialog.askopenfilename(
-            filetypes=[("Image files", ".jpg *.jpeg *.png *.bmp *.tiff"), ("All files", ".*")]
+            filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff"), ("All files", "*.*")]
         )
         
         if file_path:
@@ -383,7 +393,48 @@ class ImageProcessorApp:
             messagebox.showerror("Error", f"Error processing image: {str(e)}")
             self.status_var.set("Processing error")
 
-            def show_histogram(self, cv_img):
+    def save_image(self):
+        """Save the processed image to a file"""
+        if self.processed_img is None:
+            messagebox.showerror("Error", "No processed image to save!")
+            return
+
+        file_types = [
+            ("JPEG", "*.jpg"),
+            ("PNG", "*.png"),
+            ("BMP", "*.bmp"),
+            ("TIFF", "*.tiff"),
+            ("All files", "*.*")
+        ]
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=file_types,
+            title="Save Processed Image"
+        )
+
+        if file_path:
+            try:
+                # Get the file extension
+                ext = os.path.splitext(file_path)[1].lower()
+                
+                # Convert to RGB if saving as JPEG
+                if ext in ('.jpg', '.jpeg'):
+                    if self.processed_img.mode != 'RGB':
+                        save_img = self.processed_img.convert('RGB')
+                    else:
+                        save_img = self.processed_img
+                else:
+                    save_img = self.processed_img
+                
+                save_img.save(file_path)
+                self.status_var.set(f"Image saved to {os.path.basename(file_path)}")
+                messagebox.showinfo("Success", "Image saved successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save image: {str(e)}")
+                self.status_var.set("Error saving image")
+
+    def show_histogram(self, cv_img):
         """Show image histogram in a modern dialog"""
         try:
             # Validate image dimensions
@@ -444,7 +495,7 @@ class ImageProcessorApp:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to create histogram: {str(e)}")
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     root = tk.Tk()
     
     # Set window icon (optional)
