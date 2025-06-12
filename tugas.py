@@ -112,4 +112,160 @@ class ImageProcessorApp:
         self.main_frame = tk.Frame(root, bg=self.bg_color, padx=20, pady=20)
         self.main_frame.grid(row=0, column=1, sticky="nsew")
 
-      
+      # Image display title
+        title_frame = tk.Frame(self.main_frame, bg=self.bg_color)
+        title_frame.pack(fill=tk.X, pady=(0, 15))
+
+        ori_label_title = tk.Label(title_frame, text="Original Image", bg=self.bg_color,
+                                 font=("Segoe UI", 14, "bold"), fg=self.text_color)
+        ori_label_title.pack(side=tk.LEFT, padx=15, expand=True)
+
+        proc_label_title = tk.Label(title_frame, text="Processed Result", bg=self.bg_color,
+                                  font=("Segoe UI", 14, "bold"), fg=self.text_color)
+        proc_label_title.pack(side=tk.LEFT, padx=15, expand=True)
+
+        # Canvas frame with shadow effect
+        self.canvas_frame = tk.Frame(self.main_frame, bg=self.bg_color)
+        self.canvas_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Original image canvas with shadow
+        original_frame = tk.Frame(self.canvas_frame, bg=self.bg_color)
+        original_frame.grid(row=0, column=0, padx=(0, 20), pady=5, sticky="nsew")
+
+        # Shadow effect for canvas
+        canvas_shadow = tk.Frame(original_frame, bg="#d5d5d5")
+        canvas_shadow.pack(fill=tk.BOTH, expand=True, padx=(0, 3), pady=(0, 3))
+
+        self.original_canvas = tk.Canvas(canvas_shadow, bg=self.canvas_bg, relief=tk.FLAT,
+                                       highlightthickness=0)
+        self.original_canvas.pack(fill=tk.BOTH, expand=True)
+
+        # Processed image canvas with shadow
+        processed_frame = tk.Frame(self.canvas_frame, bg=self.bg_color)
+        processed_frame.grid(row=0, column=1, padx=(20, 0), pady=5, sticky="nsew")
+
+        # Shadow effect for canvas
+        canvas_shadow2 = tk.Frame(processed_frame, bg="#d5d5d5")
+        canvas_shadow2.pack(fill=tk.BOTH, expand=True, padx=(0, 3), pady=(0, 3))
+
+        self.processed_canvas = tk.Canvas(canvas_shadow2, bg=self.canvas_bg, relief=tk.FLAT,
+                                        highlightthickness=0)
+        self.processed_canvas.pack(fill=tk.BOTH, expand=True)
+
+        # Configure grid weights
+        self.canvas_frame.grid_columnconfigure(0, weight=1)
+        self.canvas_frame.grid_columnconfigure(1, weight=1)
+        self.canvas_frame.grid_rowconfigure(0, weight=1)
+
+        # Add hover effects to all buttons
+        self.style_buttons()
+
+    def style_buttons(self):
+        """Apply modern styling to all buttons"""
+        buttons = [self.upload_btn, self.process_btn]
+        
+        for btn in buttons:
+            btn.config(borderwidth=0, relief=tk.FLAT, 
+                      activebackground=self.button_hover,  # Ganti transparansi dengan warna solid
+                      padx=10, pady=8)
+            
+            # Add rounded corners (simulated with canvas)
+            btn.bind("<Enter>", lambda e, b=btn: b.config(bg=self.button_hover))
+            btn.bind("<Leave>", lambda e, b=btn: b.config(bg=self.button_color))
+
+    def create_parameter_widgets(self):
+        """Create parameter widgets based on selected process"""
+        for widget in self.param_frame.winfo_children():
+            widget.destroy()
+
+        current_choice = self.option_var.get()
+
+        if current_choice == "Biner (Threshold)":
+            self.create_slider("Threshold Value:", 0, 255, 128, "threshold_var")
+
+        elif current_choice == "Brightness/Contrast":
+            self.create_slider("Brightness:", -100, 100, 0, "brightness_var")
+            self.create_slider("Contrast:", 0.1, 3.0, 1.0, "contrast_var", resolution=0.1)
+
+        elif current_choice == "Operasi Logika":
+            self.create_dropdown("Operasi:", ["AND", "OR", "XOR", "NOT"], "logic_op_var")
+
+        elif current_choice == "Dilasi":
+            self.create_slider("Kernel Size:", 1, 15, 3, "morph_kernel_var")
+            self.create_slider("Iterations:", 1, 10, 1, "morph_iter_var")
+
+        elif current_choice == "Edge Detection":
+            self.create_dropdown("Metode:", ["Canny", "Sobel"], "edge_method_var")
+            
+            if hasattr(self, 'edge_method_var') and self.edge_method_var.get() == "Canny":
+                self.create_slider("Threshold 1:", 0, 500, 100, "canny_thresh1_var")
+                self.create_slider("Threshold 2:", 0, 500, 200, "canny_thresh2_var")
+
+    def create_slider(self, label_text, from_, to, default, var_name, resolution=1):
+        """Helper method to create modern sliders"""
+        frame = tk.Frame(self.param_frame, bg=self.sidebar_color)
+        frame.pack(fill=tk.X, pady=5)
+        
+        label = tk.Label(frame, text=label_text, bg=self.sidebar_color, 
+                        fg="white", font=("Segoe UI", 9))
+        label.pack(anchor=tk.W)
+        
+        var = tk.DoubleVar(value=default) if isinstance(default, float) else tk.IntVar(value=default)
+        setattr(self, var_name, var)
+        
+        slider = ttk.Scale(frame, from_=from_, to=to, variable=var, 
+                          orient=tk.HORIZONTAL, style="Horizontal.TScale")
+        slider.pack(fill=tk.X)
+        
+        # Value display
+        value_label = tk.Label(frame, textvariable=var, bg=self.sidebar_color, 
+                             fg="white", font=("Segoe UI", 8))
+        value_label.pack(anchor=tk.E)
+
+    def create_dropdown(self, label_text, options, var_name):
+        """Helper method to create modern dropdowns"""
+        frame = tk.Frame(self.param_frame, bg=self.sidebar_color)
+        frame.pack(fill=tk.X, pady=5)
+        
+        label = tk.Label(frame, text=label_text, bg=self.sidebar_color, 
+                        fg="white", font=("Segoe UI", 9))
+        label.pack(anchor=tk.W)
+        
+        var = tk.StringVar(value=options[0])
+        setattr(self, var_name, var)
+        
+        style = ttk.Style()
+        style.configure('TCombobox', fieldbackground="white", background="white")
+        
+        dropdown = ttk.Combobox(frame, textvariable=var, values=options, 
+                               state="readonly", font=("Segoe UI", 9))
+        dropdown.pack(fill=tk.X)
+
+    def update_parameters(self, event=None):
+        """Update parameter widgets when process selection changes"""
+        self.create_parameter_widgets()
+
+    def upload_image(self):
+        """Upload image from file system"""
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Image files", ".jpg *.jpeg *.png *.bmp *.tiff"), ("All files", ".*")]
+        )
+        
+        if file_path:
+            try:
+                self.original_img = Image.open(file_path)
+                self.display_image(self.original_img, self.original_canvas)
+                self.processed_img = None
+                self.processed_canvas.delete("all")
+                self.status_var.set(f"Loaded: {os.path.basename(file_path)}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load image: {str(e)}")
+                self.status_var.set("Error loading image")
+
+    def display_image(self, img, canvas):
+        """Display image on canvas"""
+        canvas.delete("all")
+        
+        # Get canvas dimensions
+        canvas_width = canvas.winfo_width() - 4
+        canvas_height = canvas.winfo_height() - 4
